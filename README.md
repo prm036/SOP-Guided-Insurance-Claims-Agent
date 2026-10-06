@@ -3,7 +3,7 @@
 An agentic conversational AI that follows a strict Standard Operating Procedure (SOP)
 workflow while maintaining natural, empathetic conversation.
 
-For an in-depth technical deep-dive on the design, methodology, and workings of this application, please read [docs.md](docs.md).
+For an in-depth technical deep-dive on the design, methodology, and workings of this application, please read [DOCS](DOCS.md).
 
 ## Architecture
 
