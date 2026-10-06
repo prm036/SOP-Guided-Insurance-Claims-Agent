@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Insurance Claims Agent</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Tahoma', 'Segoe UI', sans-serif; }
+        body { 
+            background: #008080; /* Classic Windows 95 Teal background */
+            height: 100vh; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+        }
+
+        /* Main Container - Retro Window */
+        #app-container {
+            width: 800px;
+            max-width: 95%;
+            height: 85vh;
+            background: #c0c0c0; /* Classic light grey */
+            border: 2px solid;
+            border-color: #dfdfdf #000000 #000000 #dfdfdf; /* Outset border */
+            display: flex;
+            flex-direction: column;
+            box-shadow: 2px 2px 10px rgba(0,0,0,0.5);
+        }
+
+        /* Header / Title Bar */
+        header { 
+            background: #000080; /* Dark blue title bar */
+            color: #fff; 
+            padding: 4px 8px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            font-weight: bold;
+        }
+        header h1 { font-size: 14px; display: flex; align-items: center; gap: 8px;}
+        
+        button {
+            background: #c0c0c0;
+            color: #000;
+            border: 2px solid;
+            border-color: #dfdfdf #808080 #808080 #dfdfdf;
+            padding: 4px 12px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        button:active {
+            border-color: #808080 #dfdfdf #dfdfdf #808080; /* Inset effect when clicked */
+        }
+        button:disabled { color: #808080; cursor: not-allowed; }
+
+        /* Phase tracker */
+        #phase-tracker { 
+            padding: 8px 12px; 
+            display: flex; 
+            gap: 8px; 
+            align-items: center; 
+            border-bottom: 2px solid #808080;
+        }
+        .phase-step { font-size: 12px; padding: 2px 6px; color: #808080; border: 1px solid transparent; }
+        .phase-step.active { color: #000; font-weight: bold; border: 1px dotted #000; }
+        .phase-step.done { color: #000080; }
+        .phase-arrow { color: #808080; font-size: 12px; }
+
+        /* Chat area */
+        #chat-wrapper {
+            flex: 1;
+            padding: 8px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            background: #c0c0c0;
+        }
+        #chat-area { 
+            flex: 1; 
+            background: #fff; 
+            border: 2px solid;
+            border-color: #808080 #dfdfdf #dfdfdf #808080; /* Inset border */
+            overflow-y: auto; 
+            padding: 12px; 
+            display: flex; 
+            flex-direction: column; 
+            gap: 12px; 
+        }
+        .msg { max-width: 80%; padding: 8px 12px; font-size: 13px; line-height: 1.4; white-space: pre-wrap; border: 1px solid #000; }
+        .msg.user { align-self: flex-end; background: #e0f0ff; }
+        .msg.agent { align-self: flex-start; background: #ffffcc; }
+        .msg.system { align-self: center; background: transparent; border: none; color: #808080; font-style: italic; font-size: 12px; text-align: center; }
+        .msg.email-preview { align-self: flex-start; background: #fff; border: 2px dashed #808080; font-family: 'Courier New', Courier, monospace; font-size: 12px; max-width: 90%; }
+
+        /* Typing indicator */
+        #typing { display: none; align-self: flex-start; padding: 4px 12px; font-size: 12px; color: #808080; font-style: italic; }
+
+        /* Input */
+        #input-area { 
+            padding: 8px; 
+            display: flex; 
+            gap: 8px; 
+            background: #c0c0c0;
+        }
+        #msg-input { 
+            flex: 1; 
+            border: 2px solid; 
+            border-color: #808080 #dfdfdf #dfdfdf #808080; 
+            padding: 6px; 
+            font-size: 13px; 
+            outline: none; 
+        }
+        
+        /* API Key modal */
+        #key-modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 100; }
+        #key-modal.hidden { display: none; }
+        #key-box { 
+            background: #c0c0c0; 
+            border: 2px solid;
+            border-color: #dfdfdf #000000 #000000 #dfdfdf;
+            padding: 16px; 
+            width: 350px; 
+            max-width: 90%; 
+        }
+        #key-box-header {
+            background: #000080;
+            color: #fff;
+            padding: 4px 8px;
+            font-weight: bold;
+            font-size: 14px;
+            margin: -16px -16px 16px -16px;
+        }
+        #key-box p { font-size: 12px; margin-bottom: 12px; margin-top: 8px;}
+        #key-box input { width: 100%; padding: 6px; border: 2px solid; border-color: #808080 #dfdfdf #dfdfdf #808080; font-size: 13px; margin-bottom: 16px; }
+        #key-box button { width: 100%; }
+    </style>
+</head>
+<body>
+
+<!-- API Key Modal -->
+<div id="key-modal" class="hidden">
+    <div id="key-box">
+        <div id="key-box-header">🔑 Enter API Key</div>
+        <p>Your key is sent only to the backend server and never stored in the browser.</p>
+        <input id="key-input" type="password" placeholder="sk-..." autocomplete="off">
+        <button onclick="saveKey()">Save & Start</button>
+    </div>
+</div>
+
+<div id="app-container">
+    <header>
+        <h1>🏥 Claims Support Agent</h1>
+        <button id="new-session-btn" onclick="newSession()">New Session</button>
+    </header>
+
+    <div id="phase-tracker">
+        <span class="phase-step active" data-phase="VERIFY_ID">1. Verify Identity</span>
+        <span class="phase-arrow">→</span>
+        <span class="phase-step" data-phase="RESOLVE_INTENT">2. Resolve Intent</span>
+        <span class="phase-arrow">→</span>
+        <span class="phase-step" data-phase="PROCESS_CASE">3. Process Case</span>
+        <span class="phase-arrow">→</span>
+        <span class="phase-step" data-phase="POST_PROCESS">4. Wrap Up</span>
+    </div>
+
+    <div id="chat-wrapper">
+        <div id="chat-area">
+            <div class="msg system">Click "New Session" to start, or just type a message.</div>
+        </div>
+        <div id="typing">Agent is typing...</div>
+    </div>
+
+    <div id="input-area">
+        <input id="msg-input" type="text" placeholder="Type your message..." autocomplete="off">
+        <button id="send-btn" onclick="sendMessage()">Send</button>
+    </div>
+</div>
+
+<script>
+    let sessionId = null;
+    const chatArea = document.getElementById('chat-area');
+    const msgInput = document.getElementById('msg-input');
+    const sendBtn = document.getElementById('send-btn');
+    const typing = document.getElementById('typing');
+
+    const PHASES = ['VERIFY_ID', 'RESOLVE_INTENT', 'PROCESS_CASE', 'POST_PROCESS', 'COMPLETE'];
+
+    // Enter to send
+    msgInput.addEventListener('keydown', e => {
+        if (e.key === 'Enter' && !sendBtn.disabled) sendMessage();
+    });
+
+    async function newSession() {
+        const res = await fetch('/api/session', { method: 'POST' });
+        const data = await res.json();
+        sessionId = data.session_id;
+        chatArea.innerHTML = '';
+        addMsg('system', 'Session started. You are connected to the insurance claims support agent. Phase: Identity Verification');
+        updatePhases('VERIFY_ID');
+        msgInput.focus();
+    }
+
+    async function sendMessage() {
+        const text = msgInput.value.trim();
+        if (!text) return;
+
+        // Auto-create session if needed
+        if (!sessionId) {
+            const res = await fetch('/api/session', { method: 'POST' });
+            const data = await res.json();
+            sessionId = data.session_id;
+            chatArea.innerHTML = '';
+            addMsg('system', 'Session started automatically.');
+        }
+
+        addMsg('user', text);
+        msgInput.value = '';
+        sendBtn.disabled = true;
+        typing.style.display = 'block';
+        chatArea.scrollTop = chatArea.scrollHeight;
+
+        try {
+            const res = await fetch('/api/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ session_id: sessionId, message: text }),
+            });
+            const data = await res.json();
+
+            if (data.error) {
+                addMsg('system', 'Error: ' + data.error);
+            } else {
+                if (data.response) addMsg('agent', data.response);
+                if (data.email_preview) {
+                    addMsg('email-preview', data.email_preview);
+                }
+                if (data.phase) updatePhases(data.phase);
+                if (data.state && data.state.is_complete) {
+                    addMsg('system', '✓ Session complete. Click "New Session" to start another.');
+                }
+            }
+        } catch (err) {
+            addMsg('system', 'Network error: ' + err.message);
+        }
+
+        typing.style.display = 'none';
+        sendBtn.disabled = false;
+        msgInput.focus();
+        chatArea.scrollTop = chatArea.scrollHeight;
+    }
+
+    function addMsg(type, text) {
+        const div = document.createElement('div');
+        div.className = 'msg ' + type;
+        div.textContent = text;
+        chatArea.appendChild(div);
+        chatArea.scrollTop = chatArea.scrollHeight;
+    }
+
+    function updatePhases(current) {
+        const steps = document.querySelectorAll('.phase-step');
+        const currentIdx = PHASES.indexOf(current);
+        steps.forEach(step => {
+            const phase = step.dataset.phase;
+            const idx = PHASES.indexOf(phase);
+            step.classList.remove('active', 'done');
+            if (idx < currentIdx) step.classList.add('done');
+            else if (idx === currentIdx) step.classList.add('active');
+        });
+    }
+
+    // Auto-start: check if server already has a key configured
+    checkKeyAndStart();
+
+    async function checkKeyAndStart() {
+        try {
+            const res = await fetch('/api/config');
+            const data = await res.json();
+            if (!data.has_key) {
+                document.getElementById('key-modal').classList.remove('hidden');
+            } else {
+                newSession();
+            }
+        } catch(e) {
+            console.error("Error checking config:", e);
+        }
+    }
+
+    async function saveKey() {
+        const key = document.getElementById('key-input').value.trim();
+        if (!key) return;
+        const res = await fetch('/api/config', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ api_key: key }),
+        });
+        const data = await res.json();
+        if (data.status === 'ok') {
+            document.getElementById('key-modal').classList.add('hidden');
+            newSession();
+        } else {
+            alert('Failed to set API key: ' + (data.error || 'unknown error'));
+        }
+    }
+
+    // Enter key in modal
+    document.getElementById('key-input').addEventListener('keydown', e => {
+        if (e.key === 'Enter') saveKey();
+    });
+</script>
+
+</body>
+</html>
